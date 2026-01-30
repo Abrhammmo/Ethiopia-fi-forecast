@@ -1,0 +1,5 @@
+outs:
+- md5: 8554e085b0338616fbb59597d05c902e
+  size: 4811
+  hash: md5
+  path: impact_links_enriched.csv
