@@ -1,0 +1,4 @@
+[core]
+    remote = dvc_storage
+['remote "dvc_storage"']
+    url = C:\Users\hp\dvc_storage
