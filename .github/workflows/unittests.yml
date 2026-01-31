@@ -1,0 +1,267 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [main, task-1, task-2]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+
+    - name: Lint with flake8
+      run: |
+        pip install flake8
+        flake8 src/ tests/ --max-line-length=100 --extend-ignore=E203
+
+    - name: Run tests with pytest
+      run: |
+        pytest tests/ -v --tb=short --cov=src --cov-report=xml
+
+    - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.12'
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage.xml
+        fail_ci_if_error: false
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: tests/
+
+  test-data-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Validate data files
+      run: |
+        python -c "
+        import pandas as pd
+        import os
+
+        # Check raw data exists
+        assert os.path.exists('data/raw/ethiopia_fi_unified_data.csv')
+        assert os.path.exists('data/raw/impact_sheet.csv')
+
+        # Check processed data exists
+        assert os.path.exists('data/processed/ethiopia_fi_unified_data_enriched.csv')
+        assert os.path.exists('data/processed/impact_links_enriched.csv')
+
+        # Validate unified data schema
+        df = pd.read_csv('data/processed/ethiopia_fi_unified_data_enriched.csv')
+        assert 'record_id' in df.columns
+        assert 'record_type' in df.columns
+        assert 'pillar' in df.columns
+        assert len(df) >= 40
+
+        # Validate impact links schema
+        impact = pd.read_csv('data/processed/impact_links_enriched.csv')
+        assert 'parent_id' in impact.columns
+        assert 'impact_magnitude' in impact.columns
+        assert len(impact) >= 10
+
+        print('✓ All data validation checks passed')
+        "
+
+  test-notebook-execution:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        pip install pandas numpy matplotlib seaborn jupyter nbformat
+
+    - name: Validate notebooks
+      run: |
+        # Check notebooks can be parsed
+        python -c "
+        import nbformat
+        import os
+
+        notebooks = [
+            'notebooks/Data Exploration and Enrichment.ipynb',
+            'notebooks/Exploratory Data Analysis.ipynb'
+        ]
+
+        for nb_path in notebooks:
+            assert os.path.exists(nb_path), f'{nb_path} should exist'
+            with open(nb_path) as f:
+                nb = nbformat.read(f, as_version=4)
+            cell_count = len(nb.cells)
+            print(f'✓ {nb_path}: {cell_count} cells')
+
+        print('✓ All notebooks are valid')
+        "
+
+  test-visualizations:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Check visualization files exist
+      run: |
+        python -c "
+        import os
+
+        figures_dir = 'reports/figures/'
+        expected_figures = [
+            '01_dataset_overview.png',
+            '02_temporal_coverage.png',
+            '03_data_quality.png',
+            '04_access_analysis.png',
+            '05_usage_analysis.png',
+            '06_infrastructure.png',
+            '07_event_timeline.png'
+        ]
+
+        for fig in expected_figures:
+            path = os.path.join(figures_dir, fig)
+            assert os.path.exists(path), f'{fig} should exist'
+            size = os.path.getsize(path)
+            assert size > 1000, f'{fig} should be > 1KB'
+            print(f'✓ {fig}: {size/1024:.1f} KB')
+
+        print('✓ All visualizations exist and have valid size')
+        "
+
+  test-reports:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Validate report files
+      run: |
+        python -c "
+        import os
+
+        reports = [
+            'reports/data_enrichment_log.md',
+            'reports/data_exploration_conclusions.md',
+            'reports/eda_key_insights.md'
+        ]
+
+        for report in reports:
+            assert os.path.exists(report), f'{report} should exist'
+            size = os.path.getsize(report)
+            assert size > 1000, f'{report} should be > 1KB'
+            with open(report) as f:
+                content = f.read()
+            assert len(content) > 1000, f'{report} should have substantial content'
+            print(f'✓ {report}: {len(content)} chars')
+
+        print('✓ All reports exist and have valid content')
+        "
+
+  test-reference-codes:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Validate reference codes
+      run: |
+        python -c "
+        import pandas as pd
+        import os
+
+        ref = pd.read_csv('data/processed/updated_reference_codes.csv')
+
+        # Check required codes exist
+        required_codes = [
+            'USG_G2P_DIGITIZED',
+            'EVT_G2P_DIGITAL_EXPANSION',
+            'IMP_G2P_USAGE_EFFECT'
+        ]
+
+        for code in required_codes:
+            assert code in ref['code'].values, f'{code} should be in reference codes'
+            print(f'✓ {code} exists in reference codes')
+
+        # Check code types
+        assert 'indicator' in ref['type'].values
+        assert 'event' in ref['type'].values
+        assert 'impact_link' in ref['type'].values
+
+        print('✓ Reference codes are valid')
+        "
+
+  test-impact-links:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Validate impact links
+      run: |
+        python -c "
+        import pandas as pd
+        import os
+
+        impact = pd.read_csv('data/processed/impact_links_enriched.csv')
+
+        # Check impact magnitude distribution
+        assert (impact['impact_magnitude'].isin(['low', 'medium', 'high'])).all()
+
+        # Check evidence basis distribution
+        assert (impact['evidence_basis'].isin(['literature', 'empirical', 'theoretical'])).all()
+
+        # Check lag months are reasonable
+        assert (impact['lag_months'].dropna() >= 0).all()
+        assert (impact['lag_months'].dropna() <= 36).all()
+
+        # Check events exist for each impact
+        events = pd.read_csv('data/processed/ethiopia_fi_unified_data_enriched.csv')
+        events = events[events['record_type'] == 'event']['record_id'].unique()
+        for parent in impact['parent_id'].unique():
+            assert parent in events, f'{parent} should be an event'
+
+        print('✓ Impact links are valid')
+        "
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
