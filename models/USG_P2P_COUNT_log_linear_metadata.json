@@ -1,0 +1,19 @@
+{
+  "indicator_code": "USG_P2P_COUNT",
+  "indicator_name": "P2P Payment Usage",
+  "model_type": "log_linear",
+  "metrics": {
+    "r_squared": 0.8552373979272884,
+    "p_value": 0.0010044625655214866,
+    "std_error": 0.07369535893047292,
+    "mae": 0.36707120994002085,
+    "rmse": 0.41361417616974205,
+    "mape": 1.9479310426555978e-06,
+    "n_observations": 8,
+    "model_type": "log_linear",
+    "annual_growth_rate": 55.07891448879032,
+    "doubling_time_years": 0.13164770729402195
+  },
+  "trained_date": "2026-02-02T02:25:15.239980",
+  "n_observations": 8
+}

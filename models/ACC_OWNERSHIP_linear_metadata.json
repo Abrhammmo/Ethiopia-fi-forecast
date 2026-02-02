@@ -1,0 +1,17 @@
+{
+  "indicator_code": "ACC_OWNERSHIP",
+  "indicator_name": "Account Ownership Rate",
+  "model_type": "linear",
+  "metrics": {
+    "r_squared": 0.916913281320061,
+    "p_value": 0.0006967072016617324,
+    "std_error": 0.6875347857618935,
+    "mae": 2.510204081632652,
+    "rmse": 3.0747490357186966,
+    "mape": 6.170212740353708,
+    "n_observations": 7,
+    "model_type": "linear"
+  },
+  "trained_date": "2026-02-02T02:25:15.212168",
+  "n_observations": 7
+}
